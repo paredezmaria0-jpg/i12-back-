@@ -123,7 +123,7 @@ async def cambiar_password(
     db: Annotated[Session, Depends(get_db)]
 ): 
     if not verificar_password(
-        datos.password_actual,
+        datos.old_password,
         current_user.password_hashed,
     ): 
         raise HTTPException(
@@ -132,7 +132,7 @@ async def cambiar_password(
         )
         
     current_user.password_hashed = (obtener_password_hash(
-        datos.password_nueva))  
+        datos.new_password))  
     
     db.add(current_user)
     db.commit() 

@@ -19,7 +19,7 @@ class Usuario(SQLModel, table=True):
     email: str = Field(unique=True, index=True)
     nombre: str
     apellido: str
-   # role: str  | None = Field(default="basic")
+# role: str  | None = Field(default="basic")
     password_hashed: str  
     disabled: bool = Field(default=False)
     id_rol: int  | None = Field(foreign_key="rol.id")

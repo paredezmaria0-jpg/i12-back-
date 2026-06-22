@@ -1,21 +1,27 @@
-from fastapi import APIRouter
+from typing import Annotated
+from fastapi import APIRouter, Depends
 from models.insumo import Insumo
+from models.usuario import Usuario 
 from repositores.insumo_db import crear_insumo, obtener_todos_insumos, eliminar_insumo, modificar_insumo, obtener_insumo_id
 
-from services.user_services import get_current_user, RoleChecker
+from services.user_services import get_current_user, RoleChecker 
+
+
 
 
 router = APIRouter()
 
+
+
 @router.get("/insumos/")
-async def obtenerInsumos():
+async def obtenerInsumos(current_user: Annotated[Usuario, Depends(get_current_user)]):
     insumos = obtener_todos_insumos()
     #for insumo in insumos:
         #print(insumo) flag para ver que onda
     return(insumos)
 
 @router.post("/insumos/")
-async def agregarInsumos(ins : Insumo):
+async def agregarInsumos(ins : Insumo, current_user: Annotated[Usuario, Depends(get_current_user)]):
     crear_insumo(ins)
     return {"mensaje": "insumo agregado"}
 #  return {f"Se esta agregando {ins}"} es un flag para ver que onda 
@@ -29,9 +35,10 @@ async def eliminarInsumo(id : int):
     return {"mensaje": "insumo NO encontrado"}
 
 @router.get("/insumos/{id}")
-async def obtenerInsumoId(id:int):
+async def obtenerInsumoId(id:int, current_user: Annotated[Usuario, Depends(get_current_user)]
+):
     insumo = obtener_insumo_id(id)
-    return(insumo)
+    return obtener_todos_insumos(insumo)
 
 @router.put("/insumos/{id}")
 async def modificarInsumo(id : int, ins : Insumo): 
