@@ -4,7 +4,7 @@ from models.insumo import Insumo
 from models.usuario import Usuario 
 from repositores.insumo_db import crear_insumo, obtener_todos_insumos, eliminar_insumo, modificar_insumo, obtener_insumo_id
 
-from services.user_services import get_current_user, RoleChecker 
+from services.user_services import get_current_user 
 
 
 
@@ -27,7 +27,7 @@ async def agregarInsumos(ins : Insumo, current_user: Annotated[Usuario, Depends(
 #  return {f"Se esta agregando {ins}"} es un flag para ver que onda 
 
 @router.delete("/insumos/{id}")
-async def eliminarInsumo(id : int):
+async def eliminarInsumo(id : int, current_user: Annotated[Usuario, Depends(get_current_user)]):
     insumo = obtener_insumo_id(id)
     if insumo:
         eliminar_insumo(id)
@@ -35,13 +35,12 @@ async def eliminarInsumo(id : int):
     return {"mensaje": "insumo NO encontrado"}
 
 @router.get("/insumos/{id}")
-async def obtenerInsumoId(id:int, current_user: Annotated[Usuario, Depends(get_current_user)]
-):
+async def obtenerInsumoId(id:int, current_user: Annotated[Usuario, Depends(get_current_user)]):
     insumo = obtener_insumo_id(id)
     return obtener_todos_insumos(insumo)
 
 @router.put("/insumos/{id}")
-async def modificarInsumo(id : int, ins : Insumo): 
+async def modificarInsumo(id : int, ins : Insumo, current_user: Annotated[Usuario, Depends(get_current_user)]):  
     insumo = obtener_insumo_id(id) 
     if insumo :
         modificar_insumo(id, ins)
