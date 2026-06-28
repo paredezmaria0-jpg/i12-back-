@@ -1,4 +1,5 @@
 from sqlmodel import select
+from sqlalchemy.exc import IntegrityError
 
 #from repositores.usuario_db import crear_usuario, obtener_todos_usuario, eliminar_usuario, modificar_usuario, obtener_usuario_dni
 #FALTA HACER EN REPOSITORES 
@@ -20,7 +21,7 @@ def obtener_todos_usuario():
         return session.exec(statement).all() 
     
 #username es dni, nuestro modelo usa username como dni, por eso la pongo asi en la funcion de eliminar y modificar usuario.
-def obtener_usuario_dni(username: str): 
+def obtener_usuario_username(username: str): 
     with get_session() as session: 
         statement = select(Usuario).where(Usuario.username == username)
         return session.exec(statement).first() 
@@ -49,7 +50,11 @@ def modificar_usuario(username: str, usuario: Usuario):
         #raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Usuario no encontrado") 
         update_data = usuario.model_dump(exclude_unset=True)
         usuario_db.sqlmodel_update(update_data)
-        session.commit()
+        try: 
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            raise ValueError("El mail ya esta en uso por otro usuario")
         session.refresh(usuario_db)
         return usuario_db
 

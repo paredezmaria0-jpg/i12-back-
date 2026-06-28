@@ -6,8 +6,8 @@ from datetime import timedelta
 
 # Importa tus modelos y configuración desde su ubicación real
 from models.usuario import Usuario, UserCreate, UserPublic, UserUpdate, PasswordUpdate
-from repositores.usuario_db import crear_usuario, obtener_todos_usuario, eliminar_usuario, modificar_usuario, obtener_usuario_dni
-#FALTA HACER EN REPOSITORES
+from repositores.usuario_db import crear_usuario, obtener_todos_usuario, eliminar_usuario, modificar_usuario, obtener_usuario_username
+
 from database.database import get_db
 
 #FALTA HACER EL SERVICE
@@ -138,3 +138,52 @@ async def cambiar_password(
     db.commit() 
 
     return {"mensaje": "Contraseña actualizada correctamente"} 
+
+# ----- Administración de usuarios
+
+@router.get("/", response_model=list[UserPublic])
+async def obtener_usuarios(
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
+    return obtener_todos_usuario()
+
+
+@router.get("/{username}", response_model=UserPublic)
+async def obtener_usuario(
+    username: str,
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
+    usuario = obtener_usuario_username(username)
+    if usuario:
+        return usuario
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Usuario no encontrado",
+    )
+
+
+@router.put("/{username}", response_model=UserPublic)
+async def modificar_usuario_admin(
+    username: str,
+    datos: UserUpdate,
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
+    try:
+        usuario = modificar_usuario(username, datos)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+    if usuario:
+        return usuario
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Usuario no encontrado",
+    )
+
+
+@router.delete("/{username}")
+async def eliminar_usuario_admin(
+    username: str,
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
+    return eliminar_usuario(username)
