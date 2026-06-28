@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routes import insumos, usuario
+from routes import insumos, usuario, prestamo
 
 from sqlmodel import SQLModel, Session
 
@@ -16,6 +16,7 @@ app = FastAPI()
 
 app.include_router(insumos.router)
 app.include_router(usuario.router)
+app.include_router(prestamo.router)
 
 @app.get("/")
 async def root():

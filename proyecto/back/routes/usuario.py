@@ -31,12 +31,12 @@ async def registrar_usuario(
     #verificar que el username no exista
     statement_username = select(Usuario).where(Usuario.username == usuario_in.username)
     if db.exec(statement_username).first():
-        raise HTTPException(status_code=status.HTTP_404_BAD_REQUEST, detail="El nombre de usuario ya esta registrado",
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El nombre de usuario ya esta registrado",
         )
     #validar el gmail
     statement_email = select(Usuario).where(Usuario.email == usuario_in.email)
     if db.exec(statement_email).first():
-        raise HTTPException(status_code=status.HTTP_404_BAD_REQUEST, detail="El gmail ya esta registrado",
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El gmail ya esta registrado",
         )
     
     # Encriptar el nuevo usuario
@@ -127,7 +127,7 @@ async def cambiar_password(
         current_user.password_hashed,
     ): 
         raise HTTPException(
-            status_code=status.HTTP_404_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST, 
             detail="La contraseña actual es incorrecta", 
         )
         

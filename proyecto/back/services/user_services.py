@@ -85,7 +85,7 @@ class RoleChecker:
         self.allowed_roles = allowed_roles
 
     def __call__(self, current_user: Annotated[Usuario, Depends(get_current_user)]) -> Usuario:
-        if current_user.role not in self.allowed_roles:
+        if current_user.rol is None or current_user.rol.nombre not in self.allowed_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="No tienes aura suficiente. Te vigilo."

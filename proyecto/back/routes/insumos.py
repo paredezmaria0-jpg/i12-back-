@@ -37,7 +37,9 @@ async def eliminarInsumo(id : int, current_user: Annotated[Usuario, Depends(get_
 @router.get("/insumos/{id}")
 async def obtenerInsumoId(id:int, current_user: Annotated[Usuario, Depends(get_current_user)]):
     insumo = obtener_insumo_id(id)
-    return obtener_todos_insumos(insumo)
+    if insumo:
+        return insumo
+    return {"mensaje": "insumo NO encontrado"}
 
 @router.put("/insumos/{id}")
 async def modificarInsumo(id : int, ins : Insumo, current_user: Annotated[Usuario, Depends(get_current_user)]):  
@@ -45,4 +47,4 @@ async def modificarInsumo(id : int, ins : Insumo, current_user: Annotated[Usuari
     if insumo :
         modificar_insumo(id, ins)
         return {"mensaje": "insumo modificado"}
-    return {"mensaje": "NO encontrado"}
+    return {"mensaje": "insumo NO encontrado"}
