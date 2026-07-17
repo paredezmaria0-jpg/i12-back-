@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from routes import insumos, usuario, prestamo
 
 from sqlmodel import SQLModel, Session
@@ -12,7 +13,14 @@ from models.usuario import Usuario, Rol
 from models.prestamo import Prestamo, EstadoPrestamo
 
 app = FastAPI() 
-#instancia de la clase de FastApi (esto nos va a dar todas las funcionalidades)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 app.include_router(insumos.router)
 app.include_router(usuario.router)
