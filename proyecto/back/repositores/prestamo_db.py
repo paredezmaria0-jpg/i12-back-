@@ -6,8 +6,17 @@ from database.database import get_session
 from models.insumo import Insumo
 #obtener_todos_prestamos, eliminar_prestamo, obtener_prestamo_id, obtener_prestamo_usuario, obtener_todos_prestamos_morosos
 
-def crear_prestamo(prestamo: Prestamo):
+#crear prestamo y cambiar el estado del insumo a "Activo" (prestado)
+
+def crear_prestamo(prestamo: Prestamo, insumo: Insumo):
     with get_session() as session:
+        # Cambiar el estado del insumo a "Prestado"
+        if insumo is None:
+            raise ValueError("El insumo no existe")
+        insumo = session.get(Insumo, prestamo.id_insumo)
+        insumo.id_estado = 1  # Asumiendo que el estado "Prestado" tiene id 1  
+
+        session.add(insumo)
         session.add(prestamo)
         session.commit()
         session.refresh(prestamo)

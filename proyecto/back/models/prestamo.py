@@ -20,10 +20,10 @@ class Prestamo(SQLModel, table=True):
     fecha_devolucion: date
     obs: str = Field(max_length=70)
     id_estadoPrestamo: int | None = Field(default=None, foreign_key="estadoprestamo.id")
-    id_destinatario: int | None = Field(default=None, foreign_key="destinatario.id")
+    id_destinatario: str | None = Field()#(default=None, foreign_key="destinatario.id")
     id_insumo: int | None = Field(default=None, foreign_key="insumo.id")
     id_usuario: int | None = Field(default=None, foreign_key="usuario.id")
     estadoPrestamo: Optional["EstadoPrestamo"] = Relationship(back_populates="prestamos")
-    destinatario: Optional["Destinatario"] = Relationship(back_populates="prestamos")
+    #destinatario: Optional["Destinatario"] = Relationship(back_populates="prestamos")
     insumo: Optional["Insumo"] = Relationship(back_populates="prestamos")
     usuario: Optional["Usuario"] = Relationship(back_populates="prestamos")

@@ -18,5 +18,5 @@ class Destinatario(SQLModel, table=True):
     carrera: Optional["Carrera"] = Relationship(
     back_populates="destinatarios")
 
-    prestamos: list["Prestamo"] = Relationship(
-        back_populates="destinatario")
+   # prestamos: list["Prestamo"] = Relationship(
+    #    back_populates="destinatario")
