@@ -17,7 +17,7 @@ class EstadoPrestamo(SQLModel, table=True):
 class Prestamo(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     fecha_entrega: date
-    fecha_devolucion: date
+    fecha_devolucion: date | None = None
     obs: str = Field(max_length=70)
     id_estadoPrestamo: int | None = Field(default=None, foreign_key="estadoprestamo.id")
     id_destinatario: str | None = Field()#(default=None, foreign_key="destinatario.id")

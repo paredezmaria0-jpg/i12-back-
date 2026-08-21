@@ -32,6 +32,7 @@ async def root():
 
 
 def crear_bd():
+    print(SQLModel.metadata.tables.keys())
     SQLModel.metadata.create_all(engine)
 
 def cargar_datos_prueba():
