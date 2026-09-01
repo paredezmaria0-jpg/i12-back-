@@ -98,21 +98,27 @@ async def modificar_mi_datos(
     datos: UserUpdate,
     current_user: Annotated[Usuario, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)]
-): 
+):
     if datos.nombre is not None:
         current_user.nombre = datos.nombre
-    
+
     if datos.apellido is not None:
         current_user.apellido = datos.apellido
-    
+
     if datos.email is not None:
         current_user.email = datos.email
+
+    if datos.new_password is not None:
+        current_user.password_hashed = obtener_password_hash(datos.new_password)
+
+    if datos.id_rol is not None:
+        current_user.id_rol = datos.id_rol
 
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
 
-    return current_user 
+    return current_user
 
 # ---- Cambiar contraseña 
 
@@ -170,14 +176,19 @@ async def modificar_usuario_admin(
 ):
     try:
         usuario = modificar_usuario(username, datos)
+
     except ValueError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
     if usuario:
         return usuario
+
     raise HTTPException(
         status_code=status.HTTP_404_NOT_FOUND,
-        detail="Usuario no encontrado",
+        detail="Usuario no encontrado"
     )
 
 
