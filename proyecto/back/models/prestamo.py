@@ -15,15 +15,27 @@ class EstadoPrestamo(SQLModel, table=True):
 
 
 class Prestamo(SQLModel, table=True):
+
     id: int | None = Field(default=None, primary_key=True)
+
     fecha_entrega: date
     fecha_devolucion: date | None = None
-    obs: str = Field(max_length=70)
-    id_estadoPrestamo: int | None = Field(default=None, foreign_key="estadoprestamo.id")
-    id_destinatario: str | None = Field()#(default=None, foreign_key="destinatario.id")
-    id_insumo: int | None = Field(default=None, foreign_key="insumo.id")
-    id_usuario: int | None = Field(default=None, foreign_key="usuario.id")
+
+    # Persona que realiza el préstamo
+    id_destinatario: str | None = Field()
+
+    # Datos del estudiante
+    carrera: str | None = Field(default=None, max_length=50)
+    anio: int | None = Field(default=None)
+    curso: str | None = Field(default=None, max_length=20)
+    a_cargo: str | None = Field(default=None, max_length=50)
+
+    # Observación del préstamo
+    obs: str = Field(default=None, max_length=70)
+
+    id_estadoPrestamo: int | None = Field(default=None,foreign_key="estadoprestamo.id")
+    id_insumo: int | None = Field(default=None,foreign_key="insumo.id")
+    id_usuario: int | None = Field(default=None,foreign_key="usuario.id")
     estadoPrestamo: Optional["EstadoPrestamo"] = Relationship(back_populates="prestamos")
-    #destinatario: Optional["Destinatario"] = Relationship(back_populates="prestamos")
     insumo: Optional["Insumo"] = Relationship(back_populates="prestamos")
     usuario: Optional["Usuario"] = Relationship(back_populates="prestamos")

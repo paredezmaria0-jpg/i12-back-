@@ -57,7 +57,14 @@ def obtener_todos_prestamos():
                 "idTransaccion": prestamo.id,
                 "codigoInsumo": insumo.codigo if insumo else "",
                 "insumo": insumo.nombre if insumo else "",
+                "numeracion": insumo.numeracion if insumo else None,
+
                 "destinatario": prestamo.id_destinatario,
+                "carrera": prestamo.carrera,
+                "anio": prestamo.anio,
+                "curso": prestamo.curso,
+                "a_cargo": prestamo.a_cargo,
+
                 "fecha": str(prestamo.fecha_entrega),
                 "observacion": prestamo.obs,
                 "estado": estado.nombre if estado else ""

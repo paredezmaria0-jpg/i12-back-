@@ -18,6 +18,8 @@ class EstadoInsumo(SQLModel, table=True):
 class Insumo(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     codigo: str = Field(unique=True, max_length=10, index=True)
+    numero_inventario: str | None = Field(max_length=10)
+    numeracion: int | None = Field(default=None)
     nombre: str = Field(max_length=50)
     ubicacion: str = Field(max_length=50)
 
@@ -37,8 +39,16 @@ class Insumo(SQLModel, table=True):
 class InsumoUpdate(SQLModel): #---> Sirve para actualizar parcialmente un insumo, sin enviar tdos los campos
     id: int | None = None 
     codigo: str  | None = None
+    numero_inventario: str | None = None
+    numeracion: int | None = None
     nombre: str | None = None
     ubicacion: str  | None = None
     id_estado: int | None = None
 
 
+class InsumoAlta(SQLModel):
+    nombre: str
+    numero_inventario: str
+    cantidad: int
+    numeracion: int | None = None
+    observacion: str | None = None
