@@ -19,10 +19,12 @@ class Prestamo(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     fecha_entrega: date
-    fecha_devolucion: date | None = None
+    fecha_devolucion: date | None = None #todavia no se implementa la fecha de devolución, por lo que se deja como None
 
     # Persona que realiza el préstamo
     id_destinatario: str | None = Field()
+    
+    tipo_destinatario: str | None = Field(default=None, max_length=20)
 
     # Datos del estudiante
     carrera: str | None = Field(default=None, max_length=50)

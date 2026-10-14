@@ -24,6 +24,7 @@ class Insumo(SQLModel, table=True):
     ubicacion: str = Field(max_length=50)
 
     id_estado: int = Field(foreign_key="estadoinsumo.id")
+    activo: bool = Field(default=True) #activo o inactivo, para no eliminar el insumo de la base de datos, sino marcarlo como inactivo
 
     estado: Optional["EstadoInsumo"] = Relationship(
         back_populates="insumos"

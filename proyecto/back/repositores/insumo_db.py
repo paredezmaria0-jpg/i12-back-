@@ -3,6 +3,7 @@ import re
 
 from models.insumo import Insumo, InsumoUpdate
 from database.database import get_session
+from fastapi import HTTPException
 
 
 def crear_insumo(insumo: Insumo):
@@ -28,7 +29,11 @@ def crear_insumos(insumos: list[Insumo]):
 
 def obtener_todos_insumos():
     with get_session() as session:
-        statement = select(Insumo)
+        statement = select(Insumo).order_by(
+            Insumo.activo.desc(),
+            Insumo.id.asc()
+        )
+
         return session.exec(statement).all()
 
 
@@ -39,29 +44,57 @@ def obtener_insumo_id(id: int):
 
 
 def eliminar_insumo(id: int):
-    insumo = obtener_insumo_id(id)
+    with get_session() as session:
+        insumo = session.get(Insumo, id)
 
-    if insumo:
-        with get_session() as session:
-            session.delete(insumo)
-            session.commit()
+        if insumo is None:
+            return {"ok": False, "motivo": "no_encontrado"}
+
+        if not insumo.activo:
+            return {"ok": False, "motivo": "ya_inhabilitado"}
+
+        if insumo.id_estado == 3:
+            return {"ok": False, "motivo": "prestado"}
+
+        # Baja lógica: NO eliminar de la base de datos
+        insumo.activo = False
+
+        session.add(insumo)
+        session.commit()
 
         return {"ok": True}
 
-    return {"ok": False}
+
 
 
 def modificar_insumo(insumo_update: InsumoUpdate, insumo_db: Insumo):
     with get_session() as session:
+        insumo = session.get(Insumo, insumo_db.id)
+
+        if insumo is None:
+            raise HTTPException(
+                status_code=404,
+                detail="El insumo no existe."
+            )
+
+        if not insumo.activo:
+            raise HTTPException(
+                status_code=403,
+                detail="El insumo está inhabilitado y no puede modificarse."
+            )
+
         update_data = insumo_update.model_dump(exclude_unset=True)
 
-        insumo_db.sqlmodel_update(update_data)
+        # Evitar modificaciones de habilitación desde edición normal
+        update_data.pop("activo", None)
 
-        session.add(insumo_db)
+        insumo.sqlmodel_update(update_data)
+
+        session.add(insumo)
         session.commit()
-        session.refresh(insumo_db)
+        session.refresh(insumo)
 
-        return insumo_db
+        return insumo
 
 
 def obtener_ultimo_codigo() -> int:

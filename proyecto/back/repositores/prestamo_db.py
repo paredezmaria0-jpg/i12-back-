@@ -51,6 +51,63 @@ def obtener_todos_prestamos():
         for prestamo in prestamos:
 
             insumo = session.get(Insumo, prestamo.id_insumo)
+            estado = session.get(
+                EstadoPrestamo,
+                prestamo.id_estadoPrestamo
+            )
+
+            datos = {
+                "idTransaccion": prestamo.id,
+
+                # DATOS DEL INSUMO
+                "codigoInsumo": insumo.codigo if insumo else "",
+                "insumo": insumo.nombre if insumo else "",
+                "numeracion": insumo.numeracion if insumo else None,
+
+                # DATOS DEL DESTINATARIO
+                "destinatario": prestamo.id_destinatario,
+                "tipo_destinatario": prestamo.tipo_destinatario,
+
+                # DATOS ACADÉMICOS
+                "carrera": prestamo.carrera,
+                "anio": prestamo.anio,
+                "curso": prestamo.curso,
+                "a_cargo": prestamo.a_cargo,
+
+                # DATOS DEL PRÉSTAMO
+                "fecha": str(prestamo.fecha_entrega),
+                "observacion": prestamo.obs,
+                "estado": estado.nombre if estado else ""
+            }
+
+            if estado and estado.nombre == "Activo":
+                activos.append(datos)
+
+            elif estado and estado.nombre == "Moroso":
+                morosos.append(datos)
+
+            elif estado and estado.nombre == "Devuelto":
+                devueltos.append(datos)
+
+        return {
+            "activos": activos,
+            "morosos": morosos,
+            "devueltos": devueltos
+        }
+
+    with get_session() as session:
+
+        prestamos = session.exec(
+            select(Prestamo)
+        ).all()
+
+        activos = []
+        morosos = []
+        devueltos = []
+
+        for prestamo in prestamos:
+
+            insumo = session.get(Insumo, prestamo.id_insumo)
             estado = session.get(EstadoPrestamo, prestamo.id_estadoPrestamo)
 
             datos = {

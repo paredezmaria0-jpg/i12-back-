@@ -1,5 +1,5 @@
 from typing import Annotated
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from models.insumo import Insumo, InsumoUpdate, InsumoAlta
 from models.usuario import Usuario 
 from repositores.insumo_db import (
@@ -85,12 +85,36 @@ async def agregarInsumos(
     }
 
 @router.delete("/insumos/{id}")
-async def eliminarInsumo(id : int, current_user: Annotated[Usuario, Depends(get_current_user)]):
-    insumo = obtener_insumo_id(id)
-    if insumo:
-        eliminar_insumo(id)
-        return {"mensaje": "insumo eliminado"}
-    return {"mensaje": "insumo NO encontrado"}
+async def eliminarInsumo(
+    id: int,
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
+    resultado = eliminar_insumo(id)
+
+    if not resultado["ok"]:
+        motivo = resultado["motivo"]
+
+        if motivo == "no_encontrado":
+            raise HTTPException(
+                status_code=404,
+                detail="El insumo no existe."
+            )
+
+        if motivo == "ya_inhabilitado":
+            raise HTTPException(
+                status_code=409,
+                detail="El insumo ya está inhabilitado."
+            )
+
+        if motivo == "prestado":
+            raise HTTPException(
+                status_code=409,
+                detail="No se puede inhabilitar un insumo prestado."
+            )
+
+    return {
+        "mensaje": "Insumo inhabilitado correctamente."
+    }
 
 @router.get("/insumos/{id}")
 async def obtenerInsumoId(id:int, current_user: Annotated[Usuario, Depends(get_current_user)]):
