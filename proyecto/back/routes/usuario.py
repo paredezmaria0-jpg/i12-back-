@@ -6,8 +6,8 @@ from datetime import timedelta
 
 # Importa tus modelos y configuración desde su ubicación real
 from models.usuario import Usuario, UserCreate, UserPublic, UserUpdate, PasswordUpdate
-from repositores.usuario_db import crear_usuario, obtener_todos_usuario, eliminar_usuario, modificar_usuario, obtener_usuario_dni
-#FALTA HACER EN REPOSITORES
+from repositores.usuario_db import crear_usuario, obtener_todos_usuario, eliminar_usuario, modificar_usuario, obtener_usuario_username
+
 from database.database import get_db
 
 #FALTA HACER EL SERVICE
@@ -31,12 +31,12 @@ async def registrar_usuario(
     #verificar que el username no exista
     statement_username = select(Usuario).where(Usuario.username == usuario_in.username)
     if db.exec(statement_username).first():
-        raise HTTPException(status_code=status.HTTP_404_BAD_REQUEST, detail="El nombre de usuario ya esta registrado",
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El nombre de usuario ya esta registrado",
         )
     #validar el gmail
     statement_email = select(Usuario).where(Usuario.email == usuario_in.email)
     if db.exec(statement_email).first():
-        raise HTTPException(status_code=status.HTTP_404_BAD_REQUEST, detail="El gmail ya esta registrado",
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="El gmail ya esta registrado",
         )
     
     # Encriptar el nuevo usuario
@@ -98,21 +98,27 @@ async def modificar_mi_datos(
     datos: UserUpdate,
     current_user: Annotated[Usuario, Depends(get_current_user)],
     db: Annotated[Session, Depends(get_db)]
-): 
+):
     if datos.nombre is not None:
         current_user.nombre = datos.nombre
-    
+
     if datos.apellido is not None:
         current_user.apellido = datos.apellido
-    
+
     if datos.email is not None:
         current_user.email = datos.email
+
+    if datos.new_password is not None:
+        current_user.password_hashed = obtener_password_hash(datos.new_password)
+
+    if datos.id_rol is not None:
+        current_user.id_rol = datos.id_rol
 
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
 
-    return current_user 
+    return current_user
 
 # ---- Cambiar contraseña 
 
@@ -127,7 +133,7 @@ async def cambiar_password(
         current_user.password_hashed,
     ): 
         raise HTTPException(
-            status_code=status.HTTP_404_BAD_REQUEST, 
+            status_code=status.HTTP_400_BAD_REQUEST, 
             detail="La contraseña actual es incorrecta", 
         )
         
@@ -138,3 +144,57 @@ async def cambiar_password(
     db.commit() 
 
     return {"mensaje": "Contraseña actualizada correctamente"} 
+
+# ----- Administración de usuarios
+
+@router.get("/", response_model=list[UserPublic])
+async def obtener_usuarios(
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
+    return obtener_todos_usuario()
+
+
+@router.get("/{username}", response_model=UserPublic)
+async def obtener_usuario(
+    username: str,
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
+    usuario = obtener_usuario_username(username)
+    if usuario:
+        return usuario
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Usuario no encontrado",
+    )
+
+
+@router.put("/{username}", response_model=UserPublic)
+async def modificar_usuario_admin(
+    username: str,
+    datos: UserUpdate,
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
+    try:
+        usuario = modificar_usuario(username, datos)
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+    if usuario:
+        return usuario
+
+    raise HTTPException(
+        status_code=status.HTTP_404_NOT_FOUND,
+        detail="Usuario no encontrado"
+    )
+
+
+@router.delete("/{username}")
+async def eliminar_usuario_admin(
+    username: str,
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
+    return eliminar_usuario(username)

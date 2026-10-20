@@ -1,7 +1,9 @@
 from fastapi import FastAPI
-from routes import insumos, usuario
+from fastapi.middleware.cors import CORSMiddleware
+from routes import insumos, usuario, prestamo
 
-from sqlmodel import SQLModel, Session
+from sqlmodel import SQLModel, Session, select
+from services.user_services import obtener_password_hash
 
 from database.database import engine
 
@@ -12,10 +14,18 @@ from models.usuario import Usuario, Rol
 from models.prestamo import Prestamo, EstadoPrestamo
 
 app = FastAPI() 
-#instancia de la clase de FastApi (esto nos va a dar todas las funcionalidades)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"]
+)
 
 app.include_router(insumos.router)
 app.include_router(usuario.router)
+app.include_router(prestamo.router)
 
 @app.get("/")
 async def root():
@@ -23,90 +33,35 @@ async def root():
 
 
 def crear_bd():
+    print(SQLModel.metadata.tables.keys())
     SQLModel.metadata.create_all(engine)
 
-def cargar_datos_prueba():
+def cargar_usuario_admin():
     with Session(engine) as session:
 
-        
-        rol = Rol(nombre="Administrador")
-        session.add(rol)
-        session.commit()
-        session.refresh(rol)  # para obtener el id generado
+        usuario_existente = session.exec(
+            select(Usuario).where(Usuario.username == "admin")
+        ).first()
 
-        
-        usuario = Usuario(
-            nombre="Paula",
-            apellido="García",
-            dni="12345678",
-            clave="1234",
-            id_rol=rol.id
+        if usuario_existente:
+            print("El usuario admin ya existe.")
+            return
+
+        usuario_admin = Usuario(
+            username="admin",
+            email="admin@example.com",
+            nombre="Admin",
+            apellido="",
+            password_hashed=obtener_password_hash("1234"),
+            disabled=False
         )
-        session.add(usuario)
+
+        session.add(usuario_admin)
         session.commit()
-        session.refresh(usuario)
+        session.refresh(usuario_admin)
 
-        
-        carrera = Carrera(nombre="Informática")
-        session.add(carrera)
-        session.commit()
-        session.refresh(carrera)
-
-    
-        destinatario = Destinatario(
-            nombre="Juan",
-            apellido="López",
-            dni="87654321",
-            telefono="2215550000",
-            correo="juan@mail.com",
-            id_carrera=carrera.id
-        )
-        session.add(destinatario)
-        session.commit()
-        session.refresh(destinatario)
-
-        
-        estado_insumo = EstadoInsumo(
-            nombre="Disponible",
-            observacion="En buen estado"
-        )
-        session.add(estado_insumo)
-        session.commit()
-        session.refresh(estado_insumo)
-
-        
-        insumo = Insumo(
-            codigo="PROY-001",
-            nombre="Proyector",
-            ubicacion="Aula 3",
-            id_estado=estado_insumo.id
-        )
-        session.add(insumo)
-        session.commit()
-        session.refresh(insumo)
-
-        
-        estado_prestamo = EstadoPrestamo(nombre="Activo")
-        session.add(estado_prestamo)
-        session.commit()
-        session.refresh(estado_prestamo)
-
-        
-        from datetime import date
-        prestamo = Prestamo(
-            fecha_entrega=date.today(),
-            fecha_devolucion=date(2026, 6, 1),
-            obs="Sin observaciones",
-            id_estadoPrestamo=estado_prestamo.id,
-            id_destinatario=destinatario.id,
-            id_insumo=insumo.id,
-            id_usuario=usuario.id
-        )
-        session.add(prestamo)
-        session.commit()
-
-        print("Todos los datos de prueba cargados correctamente")
-
+        print("Usuario admin creado correctamente.")
 
 crear_bd()
-    #cargar_datos_prueba()
+
+#cargar_usuario_admin()
