@@ -1,5 +1,6 @@
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import Field, SQLModel, Relationship
+from sqlalchemy import UniqueConstraint, func
 
 if TYPE_CHECKING:
     from .prestamo import Prestamo
@@ -16,6 +17,14 @@ class EstadoInsumo(SQLModel, table=True):
 
 
 class Insumo(SQLModel, table=True):
+    __table_args__ = (
+        UniqueConstraint(
+            "nombre",
+            "numeracion",
+            name="uq_insumo_nombre_numeracion"
+        ),
+    )
+    
     id: int | None = Field(default=None, primary_key=True)
     codigo: str = Field(unique=True, max_length=10, index=True)
     numero_inventario: str | None = Field(max_length=10)

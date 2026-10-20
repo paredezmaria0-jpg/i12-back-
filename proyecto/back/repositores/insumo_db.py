@@ -5,6 +5,124 @@ from models.insumo import Insumo, InsumoUpdate
 from database.database import get_session
 from fastapi import HTTPException
 
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
+
+
+
+def registrar_insumos(datos):
+    with get_session() as session:
+
+        nombre = datos.nombre.strip()
+
+        if not nombre:
+            raise HTTPException(
+                status_code=400,
+                detail="El nombre es obligatorio."
+            )
+
+        if datos.cantidad < 1:
+            raise HTTPException(
+                status_code=400,
+                detail="La cantidad debe ser mayor a cero."
+            )
+
+        # Buscar todos los insumos con ese nombre
+        statement = select(Insumo).where(
+            func.lower(func.trim(Insumo.nombre)) == nombre.lower()
+        )
+
+        existentes = session.exec(statement).all()
+
+        # Calcular la última numeración
+        ultima = 0
+
+        for insumo in existentes:
+            if insumo.numeracion is not None:
+                if insumo.numeracion > ultima:
+                    ultima = insumo.numeracion
+
+        # El bibliotecario puede indicar una numeración
+        if datos.numeracion is None:
+            inicial = ultima + 1
+        else:
+            inicial = datos.numeracion
+
+        if inicial < 1:
+            raise HTTPException(
+                status_code=400,
+                detail="La numeración debe ser mayor a cero."
+            )
+
+        # Validar TODAS las numeraciones solicitadas
+        ocupadas = {
+            insumo.numeracion
+            for insumo in existentes
+        }
+
+        for i in range(datos.cantidad):
+            numero = inicial + i
+
+            if numero in ocupadas:
+                raise HTTPException(
+                    status_code=409,
+                    detail=(
+                        f"Ya existe {nombre} Nº {numero}. "
+                        "Elegí otra numeración inicial."
+                    )
+                )
+
+        # Buscar último código INS-XXXX
+        todos = session.exec(select(Insumo)).all()
+
+        ultimo_codigo = 0
+
+        for insumo in todos:
+            match = re.match(
+                r"^INS-(\d+)$",
+                insumo.codigo or ""
+            )
+
+            if match:
+                numero = int(match.group(1))
+                if numero > ultimo_codigo:
+                    ultimo_codigo = numero
+
+        nuevos = []
+
+        for i in range(datos.cantidad):
+
+            nuevo = Insumo(
+                codigo=f"INS-{ultimo_codigo + i + 1:04d}",
+                nombre=nombre,
+                numeracion=inicial + i,
+                numero_inventario=datos.numero_inventario,
+                ubicacion=datos.observacion or "",
+                id_estado=1,
+                activo=True
+            )
+
+            session.add(nuevo)
+            nuevos.append(nuevo)
+
+        try:
+            session.commit()
+
+        except IntegrityError:
+            session.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "No se pudieron registrar los insumos. "
+                    "Puede existir una numeración o código duplicado."
+                )
+            )
+
+        for insumo in nuevos:
+            session.refresh(insumo)
+
+        return nuevos
+
 
 def crear_insumo(insumo: Insumo):
     with get_session() as session:
@@ -116,25 +234,31 @@ def obtener_ultimo_codigo() -> int:
         return maximo
 
 
-def obtener_ultima_numeracion() -> int:
+
+def obtener_ultima_numeracion(nombre: str) -> int:
     with get_session() as session:
-        statement = select(Insumo)
-        insumos = session.exec(statement).all()
+        insumos = session.exec(select(Insumo)).all()
 
-        numeraciones = [
-            insumo.numeracion
-            for insumo in insumos
-            if insumo.numeracion is not None
-        ]
+        maximo = 0
 
-        return max(numeraciones) if numeraciones else 0
+        for insumo in insumos:
+            if insumo.nombre.strip().lower() == nombre.strip().lower():
+                if insumo.numeracion is not None:
+                    if insumo.numeracion > maximo:
+                        maximo = insumo.numeracion
+
+        return maximo
+
 
 
 def existe_numeracion(nombre: str, numeracion: int) -> bool:
     with get_session() as session:
-        statement = select(Insumo).where(
-            Insumo.nombre == nombre,
-            Insumo.numeracion == numeracion
-        )
+        statement = select(Insumo)
+        insumos = session.exec(statement).all()
 
-        return session.exec(statement).first() is not None
+        for insumo in insumos:
+            if insumo.nombre.strip().lower() == nombre.strip().lower():
+                if insumo.numeracion == numeracion:
+                    return True
+
+        return False
