@@ -1,9 +1,20 @@
-from sqlmodel import SQLModel, create_engine, Session
+import os
 from typing import Generator
 
-DATABASE_URL = "sqlite:///biblioteca.db"
+from sqlmodel import SQLModel, create_engine, Session
 
-engine = create_engine(DATABASE_URL, echo= True)
+# En tu PC conserva biblioteca.db.
+# En Render configuraremos otro archivo para la demo.
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "sqlite:///biblioteca.db"
+)
+
+engine = create_engine(
+    DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    echo=False
+)
 
 
 def create_db_and_tables():
@@ -13,7 +24,7 @@ def create_db_and_tables():
 def get_session():
     return Session(engine)
 
+
 def get_db() -> Generator[Session, None, None]:
-    """Dependencia para obtener la sesion de la base de datos."""
     with Session(engine) as session:
         yield session

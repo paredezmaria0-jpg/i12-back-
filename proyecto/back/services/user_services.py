@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-import jwt
+import jwt, os
 from pydantic import EmailStr
 from sqlmodel import Session, select
 import bcrypt
@@ -14,7 +14,7 @@ from database.database import get_db
 
 
 # --Creando  nuestros datos secretos-- 
-SECRET_KEY = "Argentina" 
+SECRET_KEY = os.environ("SECRET_KEY")
 ALGORITHM = "HS256" 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 
 
