@@ -1,10 +1,12 @@
 from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from models.insumo import Insumo
-from models.prestamo import Prestamo, EstadoPrestamo
+from models.prestamo import Prestamo, EstadoPrestamo, PrestamoUpdate
 from models.usuario import Usuario 
 from repositores.prestamo_db import obtener_todos_prestamos, crear_prestamo, eliminar_prestamo, obtener_prestamo_id, obtener_prestamo_destinatario, obtener_todos_prestamos_morosos, modificar_prestamo
 from services.user_services import get_current_user 
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from sqlmodel import Session, select
 from database.database import engine
@@ -67,12 +69,20 @@ async def obtenerPrestamosMorosos(current_user: Annotated[Usuario, Depends(get_c
     return {"mensaje": "No se encontraron prestamos morosos"}
 
 @router.put("/prestamos/{id}")
-async def modificarPrestamo(id: int, prestamo: Prestamo, current_user: Annotated[Usuario, Depends(get_current_user)]):
+async def modificarPrestamo(
+    id: int,
+    prestamo: PrestamoUpdate,
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
     prestamo_db = obtener_prestamo_id(id)
-    if prestamo_db:
-        prestamo_modificado = modificar_prestamo(prestamo, prestamo_db)
-        return prestamo_modificado
-    return {"mensaje": "prestamo NO encontrado"}
+
+    if prestamo_db is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El préstamo no existe."
+        )
+
+    return modificar_prestamo(prestamo, prestamo_db)
 
 @router.put("/prestamos/{id}/estado")
 async def cambiarEstadoPrestamo(
@@ -115,21 +125,15 @@ async def devolverPrestamo(
     id: int,
     current_user: Annotated[Usuario, Depends(get_current_user)]
 ):
-    prestamo = obtener_prestamo_id(id)
-
-    if not prestamo:
-        raise HTTPException(
-            status_code=404,
-            detail="Préstamo no encontrado"
-        )
-
     with Session(engine) as session:
 
-        insumo = session.get(Insumo, prestamo.id_insumo)
+        prestamo = session.get(Prestamo, id)
 
-        if insumo:
-            insumo.id_estado = 1
-            session.add(insumo)
+        if prestamo is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Préstamo no encontrado"
+            )
 
         estado_devuelto = session.exec(
             select(EstadoPrestamo).where(
@@ -137,16 +141,42 @@ async def devolverPrestamo(
             )
         ).first()
 
-        if not estado_devuelto:
+        if estado_devuelto is None:
             raise HTTPException(
                 status_code=400,
                 detail="No existe el estado Devuelto"
             )
 
+        # Evitar registrar nuevamente una devolución
+        if prestamo.id_estadoPrestamo == estado_devuelto.id:
+            raise HTTPException(
+                status_code=400,
+                detail="Este préstamo ya fue devuelto"
+            )
+
+        insumo = session.get(Insumo, prestamo.id_insumo)
+
+        if insumo is None:
+            raise HTTPException(
+                status_code=404,
+                detail="El insumo asociado no existe"
+            )
+
+        # Registrar fecha local de Argentina
+        fecha_actual = datetime.now(
+            ZoneInfo("America/Argentina/Buenos_Aires")
+        ).date()
+
+        # Actualizar préstamo
         prestamo.id_estadoPrestamo = estado_devuelto.id
-        prestamo.fecha_devolucion = date.today()
+        prestamo.fecha_devolucion = fecha_actual
+
+        # Liberar insumo
+        insumo.id_estado = 1
 
         session.add(prestamo)
+        session.add(insumo)
+
         session.commit()
         session.refresh(prestamo)
 

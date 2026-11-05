@@ -105,8 +105,17 @@ async def obtenerInsumoId(id:int, current_user: Annotated[Usuario, Depends(get_c
     return {"mensaje": "insumo NO encontrado"}
 
 @router.put("/insumos/{id}")
-async def modificarInsumo(id: int, ins: InsumoUpdate, current_user: Annotated[Usuario, Depends(get_current_user)]):
+async def modificarInsumo(
+    id: int,
+    ins: InsumoUpdate,
+    current_user: Annotated[Usuario, Depends(get_current_user)]
+):
     insumo = obtener_insumo_id(id)
-    if insumo:
-        return modificar_insumo(ins, insumo)
-    return {"mensaje": "NO encontrado"}
+
+    if insumo is None:
+        raise HTTPException(
+            status_code=404,
+            detail="El insumo no existe."
+        )
+
+    return modificar_insumo(ins, insumo)

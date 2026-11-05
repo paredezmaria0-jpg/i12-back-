@@ -1,6 +1,6 @@
 from typing import Optional, TYPE_CHECKING
 from sqlmodel import Field, SQLModel, Relationship
-from sqlalchemy import UniqueConstraint, func
+from sqlalchemy import Index, func
 
 if TYPE_CHECKING:
     from .prestamo import Prestamo
@@ -17,14 +17,6 @@ class EstadoInsumo(SQLModel, table=True):
 
 
 class Insumo(SQLModel, table=True):
-    __table_args__ = (
-        UniqueConstraint(
-            "nombre",
-            "numeracion",
-            name="uq_insumo_nombre_numeracion"
-        ),
-    )
-    
     id: int | None = Field(default=None, primary_key=True)
     codigo: str = Field(unique=True, max_length=10, index=True)
     numero_inventario: str | None = Field(max_length=10)
@@ -33,7 +25,7 @@ class Insumo(SQLModel, table=True):
     ubicacion: str = Field(max_length=50)
 
     id_estado: int = Field(foreign_key="estadoinsumo.id")
-    activo: bool = Field(default=True) #activo o inactivo, para no eliminar el insumo de la base de datos, sino marcarlo como inactivo
+    activo: bool = Field(default=True)
 
     estado: Optional["EstadoInsumo"] = Relationship(
         back_populates="insumos"
@@ -46,13 +38,19 @@ class Insumo(SQLModel, table=True):
     def nombre_completo(self) -> str:
         return f"{self.codigo} {self.nombre}"
 
-class InsumoUpdate(SQLModel): #---> Sirve para actualizar parcialmente un insumo, sin enviar tdos los campos
-    id: int | None = None 
-    codigo: str  | None = None
+Index(
+    "uq_insumo_nombre_numeracion_activo",
+    func.lower(func.trim(Insumo.__table__.c.nombre)),
+    Insumo.__table__.c.numeracion,
+    unique=True,
+    sqlite_where=Insumo.__table__.c.activo == True
+)
+
+class InsumoUpdate(SQLModel):
+    nombre: str | None = None
     numero_inventario: str | None = None
     numeracion: int | None = None
-    nombre: str | None = None
-    ubicacion: str  | None = None
+    ubicacion: str | None = None
     id_estado: int | None = None
 
 

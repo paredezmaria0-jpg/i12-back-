@@ -22,7 +22,7 @@ class Prestamo(SQLModel, table=True):
     fecha_devolucion: date | None = None #todavia no se implementa la fecha de devolución, por lo que se deja como None
 
     # Persona que realiza el préstamo
-    id_destinatario: str | None = Field()
+    id_destinatario: str | None = Field(default=None)
     
     tipo_destinatario: str | None = Field(default=None, max_length=20)
 
@@ -33,7 +33,7 @@ class Prestamo(SQLModel, table=True):
     a_cargo: str | None = Field(default=None, max_length=50)
 
     # Observación del préstamo
-    obs: str = Field(default=None, max_length=70)
+    obs: str | None = Field(default=None, max_length=70)
 
     id_estadoPrestamo: int | None = Field(default=None,foreign_key="estadoprestamo.id")
     id_insumo: int | None = Field(default=None,foreign_key="insumo.id")
@@ -41,3 +41,15 @@ class Prestamo(SQLModel, table=True):
     estadoPrestamo: Optional["EstadoPrestamo"] = Relationship(back_populates="prestamos")
     insumo: Optional["Insumo"] = Relationship(back_populates="prestamos")
     usuario: Optional["Usuario"] = Relationship(back_populates="prestamos")
+
+class PrestamoUpdate(SQLModel):
+    id_destinatario: str | None = None
+    tipo_destinatario: str | None = None
+
+    carrera: str | None = None
+    anio: int | None = None
+    curso: str | None = None
+    a_cargo: str | None = None
+
+    fecha_entrega: date | None = None
+    obs: str | None = None

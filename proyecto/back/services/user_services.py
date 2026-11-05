@@ -1,10 +1,12 @@
 # crear obtener_password_hash, verificar_password, crear_token_acceso, get_current_user, ACCESS_TOKEN_EXPIRE_MINUTES
 
 from datetime import datetime, timedelta, timezone
+import secrets
 from typing import Annotated
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-import jwt, os
+import jwt
+import os
 from pydantic import EmailStr
 from sqlmodel import Session, select
 import bcrypt
@@ -14,7 +16,8 @@ from database.database import get_db
 
 
 # --Creando  nuestros datos secretos-- 
-SECRET_KEY = os.environ("SECRET_KEY")
+#SECRET_KEY = os.environ("SECRET_KEY")
+SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 ALGORITHM = "HS256" 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 
 

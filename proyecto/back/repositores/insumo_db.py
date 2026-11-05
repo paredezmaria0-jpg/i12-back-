@@ -58,6 +58,7 @@ def registrar_insumos(datos):
         ocupadas = {
             insumo.numeracion
             for insumo in existentes
+            if insumo.activo
         }
 
         for i in range(datos.cantidad):
@@ -186,7 +187,9 @@ def eliminar_insumo(id: int):
 
 
 def modificar_insumo(insumo_update: InsumoUpdate, insumo_db: Insumo):
+
     with get_session() as session:
+
         insumo = session.get(Insumo, insumo_db.id)
 
         if insumo is None:
@@ -195,21 +198,79 @@ def modificar_insumo(insumo_update: InsumoUpdate, insumo_db: Insumo):
                 detail="El insumo no existe."
             )
 
+        # No editar insumos inhabilitados
         if not insumo.activo:
             raise HTTPException(
                 status_code=403,
                 detail="El insumo está inhabilitado y no puede modificarse."
             )
 
+        # No editar insumos prestados
+        if insumo.id_estado == 3:
+            raise HTTPException(
+                status_code=409,
+                detail="No se puede modificar un insumo prestado."
+            )
+
         update_data = insumo_update.model_dump(exclude_unset=True)
 
-        # Evitar modificaciones de habilitación desde edición normal
-        update_data.pop("activo", None)
+        # Proteger identificadores y habilitación
+        for campo in ("id", "codigo", "activo"):
+            update_data.pop(campo, None)
 
+        # Determinar el nombre y la numeración definitivos
+        nombre = update_data.get("nombre", insumo.nombre)
+        numeracion = update_data.get("numeracion", insumo.numeracion)
+
+        if nombre is None or not nombre.strip():
+            raise HTTPException(
+                status_code=422,
+                detail="El nombre del insumo no puede estar vacío."
+            )
+
+        nombre = nombre.strip()
+        update_data["nombre"] = nombre
+
+        if numeracion is None or numeracion < 1:
+            raise HTTPException(
+                status_code=422,
+                detail="La numeración debe ser un entero mayor a cero."
+            )
+
+        # Buscar otro insumo ACTIVO con igual nombre y numeración
+        existente = session.exec(
+            select(Insumo).where(
+                func.lower(func.trim(Insumo.nombre)) == nombre.lower(),
+                Insumo.numeracion == numeracion,
+                Insumo.activo == True,
+                Insumo.id != insumo.id
+            )
+        ).first()
+
+        if existente:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"Ya existe un insumo activo llamado "
+                    f"'{nombre}' con numeración {numeracion}."
+                )
+            )
+
+        # Aplicar los cambios
         insumo.sqlmodel_update(update_data)
 
         session.add(insumo)
-        session.commit()
+
+        try:
+            session.commit()
+
+        except IntegrityError:
+            session.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="Ya existe un insumo activo con ese nombre y numeración."
+            )
+
         session.refresh(insumo)
 
         return insumo
@@ -253,12 +314,12 @@ def obtener_ultima_numeracion(nombre: str) -> int:
 
 def existe_numeracion(nombre: str, numeracion: int) -> bool:
     with get_session() as session:
-        statement = select(Insumo)
-        insumos = session.exec(statement).all()
+        statement = select(Insumo).where(
+            func.lower(func.trim(Insumo.nombre)) == nombre.strip().lower(),
+            Insumo.numeracion == numeracion,
+            Insumo.activo == True
+        )
 
-        for insumo in insumos:
-            if insumo.nombre.strip().lower() == nombre.strip().lower():
-                if insumo.numeracion == numeracion:
-                    return True
+        insumo = session.exec(statement).first()
 
-        return False
+        return insumo is not None

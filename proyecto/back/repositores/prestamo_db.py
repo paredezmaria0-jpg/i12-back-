@@ -1,30 +1,43 @@
 from sqlmodel import select 
 
-from models.prestamo import Prestamo, EstadoPrestamo
+from models.prestamo import Prestamo, EstadoPrestamo, PrestamoUpdate
 from models.destinatario import Destinatario
 from database.database import get_session
 from models.insumo import Insumo
 from datetime import datetime, date
+from fastapi import HTTPException
+from zoneinfo import ZoneInfo
+
 
 #obtener_todos_prestamos, eliminar_prestamo, obtener_prestamo_id, obtener_prestamo_usuario, obtener_todos_prestamos_morosos
 
 #crear prestamo y cambiar el estado del insumo a "Activo" (prestado)
 
 def crear_prestamo(prestamo: Prestamo):
+
     with get_session() as session:
+
         insumo = session.get(Insumo, prestamo.id_insumo)
 
         if insumo is None:
-            raise ValueError("El insumo no existe")
+            raise ValueError("El insumo no existe.")
 
-        # Convertir fecha_entrega de string a Python date object si es necesario
+        if not insumo.activo:
+            raise ValueError("No se puede prestar un insumo inhabilitado.")
+
+        if insumo.id_estado != 1:
+            raise ValueError("El insumo no está disponible para préstamo.")
+
         if isinstance(prestamo.fecha_entrega, str):
-            prestamo.fecha_entrega = datetime.strptime(prestamo.fecha_entrega, "%Y-%m-%d").date()
+            prestamo.fecha_entrega = datetime.strptime(
+                prestamo.fecha_entrega,
+                "%Y-%m-%d"
+            ).date()
 
-        # El insumo pasa a "Prestado" (id_estado = 3)
+        # El insumo pasa a Prestado
         insumo.id_estado = 3
 
-        # El préstamo comienza como "Activo" (id_estadoPrestamo = 1)
+        # El préstamo comienza como Activo
         prestamo.id_estadoPrestamo = 1
 
         session.add(insumo)
@@ -34,7 +47,6 @@ def crear_prestamo(prestamo: Prestamo):
         session.refresh(prestamo)
 
         return prestamo
-
     
 def obtener_todos_prestamos():
 
@@ -76,53 +88,13 @@ def obtener_todos_prestamos():
 
                 # DATOS DEL PRÉSTAMO
                 "fecha": str(prestamo.fecha_entrega),
-                "observacion": prestamo.obs,
-                "estado": estado.nombre if estado else ""
-            }
 
-            if estado and estado.nombre == "Activo":
-                activos.append(datos)
+                "fecha_devolucion": (
+                    str(prestamo.fecha_devolucion)
+                    if prestamo.fecha_devolucion is not None
+                    else None
+                ),
 
-            elif estado and estado.nombre == "Moroso":
-                morosos.append(datos)
-
-            elif estado and estado.nombre == "Devuelto":
-                devueltos.append(datos)
-
-        return {
-            "activos": activos,
-            "morosos": morosos,
-            "devueltos": devueltos
-        }
-
-    with get_session() as session:
-
-        prestamos = session.exec(
-            select(Prestamo)
-        ).all()
-
-        activos = []
-        morosos = []
-        devueltos = []
-
-        for prestamo in prestamos:
-
-            insumo = session.get(Insumo, prestamo.id_insumo)
-            estado = session.get(EstadoPrestamo, prestamo.id_estadoPrestamo)
-
-            datos = {
-                "idTransaccion": prestamo.id,
-                "codigoInsumo": insumo.codigo if insumo else "",
-                "insumo": insumo.nombre if insumo else "",
-                "numeracion": insumo.numeracion if insumo else None,
-
-                "destinatario": prestamo.id_destinatario,
-                "carrera": prestamo.carrera,
-                "anio": prestamo.anio,
-                "curso": prestamo.curso,
-                "a_cargo": prestamo.a_cargo,
-
-                "fecha": str(prestamo.fecha_entrega),
                 "observacion": prestamo.obs,
                 "estado": estado.nombre if estado else ""
             }
@@ -173,14 +145,38 @@ def eliminar_prestamo(id: int):
         #session.refresh(prestamo) creo que noo, porque no se puede refrescar algo que ya eliminamos.
         return {"ok": True} 
 
-def modificar_prestamo(prestamo_update: Prestamo, prestamo_db: Prestamo): 
-    #pass 
-    #terminar despues 
-    with get_session() as session: 
-        update_data = prestamo_update.model_dump(exclude_unset=True)
-        prestamo_db.sqlmodel_update(update_data)
-        session.add(prestamo_db)
-        session.commit() 
-        session.refresh(prestamo_db) 
+def modificar_prestamo(
+    prestamo_update: PrestamoUpdate,
+    prestamo_db: Prestamo
+):
+    with get_session() as session:
 
-        return prestamo_db 
+        prestamo = session.get(Prestamo, prestamo_db.id)
+
+        if prestamo is None:
+            raise HTTPException(
+                status_code=404,
+                detail="El préstamo no existe."
+            )
+
+        update_data = prestamo_update.model_dump(
+            exclude_unset=True
+        )
+
+        if "fecha_entrega" in update_data:
+            if update_data["fecha_entrega"] is None:
+                raise HTTPException(
+                    status_code=422,
+                    detail="La fecha del préstamo es obligatoria."
+                )
+
+        if "obs" in update_data:
+            update_data["obs"] = update_data["obs"] or ""
+
+        prestamo.sqlmodel_update(update_data)
+
+        session.add(prestamo)
+        session.commit()
+        session.refresh(prestamo)
+
+        return prestamo
