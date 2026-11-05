@@ -16,8 +16,8 @@ from database.database import get_db
 
 
 # --Creando  nuestros datos secretos-- 
-#SECRET_KEY = os.environ("SECRET_KEY")
-SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(32)
+SECRET_KEY = os.environ("SECRET_KEY")
+#SECRET_KEY = os.getenv("SECRET_KEY") or secrets.token_hex(32)
 ALGORITHM = "HS256" 
 ACCESS_TOKEN_EXPIRE_MINUTES = 30 
 
